@@ -5,12 +5,12 @@
 #>
 
 
-
-
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Position=0, Mandatory=$true)]
     [string]$ScriptPath,
+    [Parameter(Mandatory=$false)]
+    [string]$OutputDir = "$PSScriptRoot\out",
     [Parameter(Mandatory=$false)]
     [string]$IconPath,
     [Parameter(Mandatory=$false)]
@@ -23,7 +23,7 @@ param(
     [ValidateSet('Debug','Release')]
     [string]$Configuration='Release'
 ) 
-
+    
 
 function Convert-FromBase64CompressedScriptBlock {
 
@@ -119,7 +119,7 @@ function Build-Script{
         [Parameter(Mandatory=$false)]
         [ValidateSet('Debug','Release')]
         [string]$Configuration='Release'
-    ) #>
+    ) 
 
 
     $DebugCfg = $Configuration -eq 'Debug'
@@ -209,17 +209,11 @@ function Build-Script{
 
         &"$CscExe" "/nologo" "/warn:0" "/target:exe" "/reference:$DllBin" "/reference:$PresentationFrameworkRef" "/win32manifest:$ManifestSource" "$IconDef" "$DbgLevel" "/out:$AppBin" "$AppSource"   
     
-       # $Null = Remove-Item -Path $RootPath -Recurse -Force -ErrorAction Ignore
+        $Null = Remove-Item -Path $RootPath -Recurse -Force -ErrorAction Ignore
 
-
-        if(Test-Path "$DllBin"){
-            Write-Output "[SUCCESS] `"$DllBin`""
-        }else{
-            throw "Failed to build `"$DllBin`""
-        }
-        if(Test-Path "$AppBin"){
-            Write-Output "[SUCCESS] `"$AppBin`""
-            &"explorer.exe" "$BinPath"
+        if(( Test-Path "$AppBin") -And ( Test-Path "$DllBin") ){
+            #Write-Output "[SUCCESS] `"$AppBin`""
+            return "$BinPath"
         }else{
             throw "Failed to build `"$AppBin`""
         }
@@ -234,4 +228,149 @@ function Build-Script{
 }
 
 
-Build-Script -ScriptPath "$ScriptPath" -IconPath "$IconPath" -GUI:$GUI -Admin:$Admin -Configuration "$Configuration" -UseResourceEncryption:$UseResourceEncryption
+function Invoke-Confuser{
+    [CmdletBinding(SupportsShouldProcess=$true,DefaultParameterSetName="Flex")]
+    param(
+        [Parameter(Position=0, Mandatory=$true)]
+        [string]$InputDir,
+        [Parameter(Position=1, Mandatory=$true)]
+        [string]$OutputDir,
+        [Parameter(ParameterSetName="Preset",Mandatory=$false)]
+        [ValidateSet('none','minimum','normal','aggressive','maximum')]
+        [string]$Preset,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Encode and Compress Constants in the Code")]
+        [switch]$Constants,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Encode and Compress Embedded Resources in the Code")]
+        [switch]$Resources,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Mangles the Code in methods so that it's less readable.")]
+        [switch]$ControlFlow,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Replace Types with Generics")]
+        [switch]$TypeScrambler,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Obfuscate the symbols names")]
+        [switch]$Names,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Adds Invalid Metadata")]
+        [switch]$InvalidMetaData,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Encodes and Hides references to types/methods")]
+        [switch]$ReferencesProxy,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Prevent Assembly from being Debugged")]
+        [switch]$AntiDebug,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Prevent Assembly from being Dumped")]
+        [switch]$AntiDump,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Ensure Application Integrity")]
+        [switch]$AntiTamper,
+        [Parameter(ParameterSetName="Flex",Mandatory=$false, HelpMessage="Mark Module with Attribute that...")]
+        [switch]$AntiIlDasm,
+        [Parameter(Mandatory=$false, HelpMessage="Compress")]
+        [Parameter(ParameterSetName="Preset")]
+        [Parameter(ParameterSetName="Flex")]
+        [switch]$Compress
+    ) 
+
+    try {
+
+        $Null = Remove-Item -Path $OutputDir -Recurse -Force -ErrorAction Ignore
+        $Null = New-Item -Path $OutputDir -ItemType directory -Force -ErrorAction Ignore
+
+        $BaseXmlCfgEncoded = "H4sIAAAAAAAACqXQOwrDMBAE0F6QO4g9gNUHyRBImSKkSS3ba6ygz7JagY8f47hME9LNwPCKscTlhaPo0oSaXAM7AD34ikdcU8zVwSJCZ2PGkudWkbuxTEgR1y0k6JXWlltETV4EOTsQbgg65AU5iIPZx7p1sy9TmY7t4uBeHy1n5AtRhyvu1k+a+XDf5Cd7IuRbGLopxj9oa46b+pNSb7gc24MzAQAA"
+        #$BaseXmlCfgEncoded = "H4sIAAAAAAAACqWQsQrDMAxE90D/wegD4r3EgULHDqVLZsdWiFvHFrIM+fwGEjp1Kd3u0N07UEecn+hE5SpU5RrYAKjRFjzkusRUDMwidNba5TTVgty67JEirptYoD81SnVcIyqyIsjJgHBFUCHNyEEMTDaWzes9Sta9kFXwBrY+MZaS+XNdsj9Qs4F7edSUkC9ELa64b/22pnfgV/jAlgj5FsbWx/gfvdPHM/vmDY/7LdxXAQAA"
+        [xml]$BaseXmlCfg =( (Convert-FromBase64CompressedScriptBlock -ScriptBlock $BaseXmlCfgEncoded) -as [xml] )
+        $ConfuserExPath = "$PSScriptRoot\ConfuserEx"
+        $ConfigPath = "$PSScriptRoot\tmp"
+        $ConfigFilePath = "$PSScriptRoot\tmp\confuser.crproj"
+        $Null = Remove-Item -Path $ConfigPath -Recurse -Force -ErrorAction Ignore
+        $Null = New-Item -Path $ConfigPath -ItemType directory -Force -ErrorAction Ignore
+        $ConfuserCLI = "$ConfuserExPath\Confuser.CLI.exe"
+        $ConfigLevelFile = "$ConfigPath\{0}.crproj" -f $Level
+
+        $BaseXmlCfg.project.baseDir = "$InputDir"
+        $BaseXmlCfg.project.outputDir = "$OutputDir"
+
+        if ($PSCmdlet.ParameterSetName -eq 'Preset') {
+            #$BaseXmlCfg.project.rule.inherit = "true"
+            #$BaseXmlCfg.project.rule.SetAttribute("preset","$Preset")
+            $BaseXmlCfg.project.module[0].rule.inherit = "true"
+            $BaseXmlCfg.project.module[0].rule.SetAttribute("preset","$Preset")
+            $BaseXmlCfg.project.module[1].rule.inherit = "true"
+            $BaseXmlCfg.project.module[1].rule.SetAttribute("preset","$Preset")
+        }else{
+            $BaseXmlCfg.project.module[0].rule.inherit = "true"
+            $BaseXmlCfg.project.module[1].rule.inherit = "true"
+            if($Constants){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "constants")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($Resources){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "resources")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($ControlFlow){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "ctrl flow")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($TypeScrambler){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "typescramble")
+                $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($Names){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "rename")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($InvalidMetaData){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "invalid metadata")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($AntiDebug){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "anti debug")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($AntiDump){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "anti dump")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($AntiTamper){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "anti tamper")
+                $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+            if($AntiIlDasm){
+                $child = $BaseXmlCfg.CreateElement("protection",$BaseXmlCfg.project.rule.NamespaceURI)
+                $child.SetAttribute("id", "anti ildasm")
+                $Null = $BaseXmlCfg.project.rule.AppendChild($child)
+            }
+        }
+
+        if($Compress){
+            $child = $BaseXmlCfg.CreateElement("packer",$BaseXmlCfg.project.NamespaceURI)
+            $child.SetAttribute("id", "compressor")
+            $Null = $BaseXmlCfg.project.InsertAfter($child,$BaseXmlCfg.project.rule)
+        }
+
+        $Null = $BaseXmlCfg.Save($ConfigFilePath)
+
+        &"$ConfuserCLI" "$ConfigFilePath"
+
+        $Null = Remove-Item -Path $ConfigPath -Recurse -Force -ErrorAction Ignore
+        $Null = Remove-Item -Path $InputDir -Recurse -Force -ErrorAction Ignore
+
+    }catch { 
+        #$formatstring = "ERROR: {0}`n{1}"
+        $formatstring = "ERROR: {0}"
+        $fields = $_.FullyQualifiedErrorId,$_.Exception.ToString()
+        $ExceptMsg=($formatstring -f $fields)
+        Write-Output $ExceptMsg
+    }
+}
+
+
+
+$BinPath = Build-Script -ScriptPath "$ScriptPath" -IconPath "$IconPath" -GUI:$GUI -Admin:$Admin -Configuration "$Configuration" -UseResourceEncryption:$UseResourceEncryption
+
+Invoke-Confuser -InputDir "$BinPath" -OutputDir "$OutputDir" -ControlFlow -Constants -Resources -ReferencesProxy -AntiDebug -Compress

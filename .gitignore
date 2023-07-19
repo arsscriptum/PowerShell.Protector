@@ -1,4 +1,7 @@
-
+out/**
+out
+tmp
+tmp/**
 obj
 obj/**
 bin
