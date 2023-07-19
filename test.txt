@@ -1,7 +1,0 @@
-<project outputDir="" baseDir="" xmlns="http://confuser.codeplex.com">
-  <rule pattern="true" inherit="false" />
-  <packer id="compressor" />
-  <module path="Program.exe">
-    <rule pattern="true" inherit="false" />
-  </module>
-</project>
