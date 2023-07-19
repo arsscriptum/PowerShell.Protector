@@ -148,6 +148,101 @@ $ConsoleBuilderRoot = (Get-ItemProperty -Path "$RegPathConsoleBuilderRoot" -Name
 
 
 
+
+function Get-ConvertedCoordValue{
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory=$True, Position = 0)]
+        [ValidateNotNullOrEmpty()]
+        [int32]$PosX,
+        [Parameter(Mandatory=$True, Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [int32]$PosY,
+        [Parameter(Mandatory=$false)]
+        [switch]$Hex
+    )
+
+       $HexWidth = ([System.Convert]::ToString($PosX,16).PadLeft(4,'0'))
+       $HexHeight = ([System.Convert]::ToString($PosY,16).PadLeft(4,'0'))
+
+       $FinalHexVal = '0x{0}{1}' -f $HexHeight,$HexWidth
+       Write-Verbose "Final Hex Value   $FinalHexVal"
+       
+       if($Hex){
+          return $FinalHexVal
+       }
+       $NumValue = [Int32]"$FinalHexVal"
+       
+       return $NumValue
+}
+
+
+function Set-AppConsoleProperties {
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory=$True, Position = 0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Path,
+        [Parameter(Mandatory=$True, Position = 1)]
+        [ValidateNotNullOrEmpty()]
+        [int32]$PosX,
+        [Parameter(Mandatory=$True, Position = 2)]
+        [ValidateNotNullOrEmpty()]
+        [int32]$PosY,
+        [Parameter(Mandatory=$True, Position = 3)]
+        [ValidateNotNullOrEmpty()]
+        [int32]$SizeX,
+        [Parameter(Mandatory=$True, Position = 4)]
+        [ValidateNotNullOrEmpty()]
+        [int32]$SizeY,
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("Black", "LightAqua", "LightPurple", "Purple", "Red", "LightGreen", "Aqua", "LightRed", "Yellow", "BrightWhite", "White", "LightYellow", "Gray", "LightBlue", "Blue", "Green")]
+        [string]$BackgroundColor = "Black",
+        [Parameter(Mandatory=$false)]
+        [ValidateSet("Black", "LightAqua", "LightPurple", "Purple", "Red", "LightGreen", "Aqua", "LightRed", "Yellow", "BrightWhite", "White", "LightYellow", "Gray", "LightBlue", "Blue", "Green")]
+        [string]$ForegroundColor = "LightGreen"
+    )
+    try{
+
+        $colors = @{
+            Black = '0'
+            Blue = '1'
+            Green = '2'
+            Aqua = '3'
+            Red = '4'
+            Purple = '5'
+            Yellow = '6'
+            White = '7'
+            Gray = '8'
+            LightBlue = '9'
+            LightGreen = 'A'
+            LightAqua = 'B'
+            LightRed = 'C'
+            LightPurple = 'D'
+            LightYellow = 'E'
+            BrightWhite = 'F'
+        }
+        if(-not(Test-Path "$Path")){ throw "no such file"}
+        $ModPath = $Path.Replace("\","_")
+        $RegPath = "HKCU:\Console\{0}" -f $ModPath
+        $Null = New-Item -Path "$RegPath" -Force -ErrorAction Ignore
+
+        [int32]$SizeValue = Get-ConvertedCoordValue $SizeX $SizeY
+        $Null = New-ItemProperty -Path "$RegPath" -Name "WindowSize" -PropertyType DWORD -Value $SizeValue
+
+        [int32]$PositionValue = Get-ConvertedCoordValue $PosX $PosY
+        $Null = New-ItemProperty -Path "$RegPath" -Name "WindowPosition" -PropertyType DWORD -Value $PositionValue
+
+        $ColorHexVal = '0x00{0}{1}' -f $colors[$BackgroundColor],$colors[$ForegroundColor]
+        $ColorValue = [Int32]"$ColorHexVal"
+        $Null = New-ItemProperty -Path "$RegPath" -Name "ScreenColors" -PropertyType DWORD -Value $ColorValue
+    }catch{
+        Write-Error "$_"
+    }
+}
+
+
+
 function Get-Frameworks{
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -278,12 +373,15 @@ function Build-Script{
         [string]$Configuration='Release'
     ) 
 
+    $RegPathPSBuilder="$ENV:OrganizationHKCU\PowerShellBuilder"
+    $PSBuilderRoot = (Get-ItemProperty -Path "$RegPathPSBuilder" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
+
     $Null = Remove-Item -Path $OutputDir -Recurse -Force -ErrorAction Ignore
     $Null = New-Item -Path $OutputDir -ItemType directory -Force -ErrorAction Ignore
 
     $DebugCfg = $Configuration -eq 'Debug'
     $ReleaseCfg = $Configuration -eq 'Release' 
-    $RootPath = $ProgramDirectory
+    $RootPath = $PSBuilderRoot
     $ObjPath = "$RootPath\obj"
     $BinPath = "$RootPath\bin"
     $Null = Remove-Item -Path $ObjPath -Recurse -Force -ErrorAction Ignore
@@ -434,8 +532,10 @@ function Invoke-Confuser{
     ) 
 
     try {
+        $RegPathPSBuilder="$ENV:OrganizationHKCU\PowerShellBuilder"
+        $PSBuilderRoot = (Get-ItemProperty -Path "$RegPathPSBuilder" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
 
-        $RootPath = $ProgramDirectory
+        $RootPath = $PSBuilderRoot
         $BaseXmlCfgEncoded = "H4sIAAAAAAAACpWPSwoDIRAF90LuIH2AcR/UVQ6QKxinJxr80bbg8TNMvEB29aAoeLpR/aBnWQe3wY9IBkC+XMeFM6fSDQTmdlfK13KMjrT5umNLOE/IYIWUmkZC2RwzUjHANBBkLAEpsoHDpX5udZm57ssNBp5U3+TyhhOvzl8l9UtZodX6YW9CfAESi9Sj1AAAAA=="   #$BaseXmlCfgEncoded = "H4sIAAAAAAAACqXQOwrDMBAE0F6QO4g9gNUHyRBImSKkSS3ba6ygz7JagY8f47hME9LNwPCKscTlhaPo0oSaXAM7AD34ikdcU8zVwSJCZ2PGkudWkbuxTEgR1y0k6JXWlltETV4EOTsQbgg65AU5iIPZx7p1sy9TmY7t4uBeHy1n5AtRhyvu1k+a+XDf5Cd7IuRbGLopxj9oa46b+pNSb7gc24MzAQAA"
         #$BaseXmlCfgEncoded = "H4sIAAAAAAAACqWQsQrDMAxE90D/wegD4r3EgULHDqVLZsdWiFvHFrIM+fwGEjp1Kd3u0N07UEecn+hE5SpU5RrYAKjRFjzkusRUDMwidNba5TTVgty67JEirptYoD81SnVcIyqyIsjJgHBFUCHNyEEMTDaWzes9Sta9kFXwBrY+MZaS+XNdsj9Qs4F7edSUkC9ELa64b/22pnfgV/jAlgj5FsbWx/gfvdPHM/vmDY/7LdxXAQAA"
         [xml]$BaseXmlCfg =( (Convert-FromBase64CompressedScriptBlock -ScriptBlock $BaseXmlCfgEncoded) -as [xml] )
@@ -583,8 +683,10 @@ function Invoke-ILMerge{
         }else{
             $TargetDef = "/target:exe"
         }
-        
-        $ILMergePath = (Resolve-Path "$ProgramDirectory\ILMerge").Path
+        $RegPathPSBuilder="$ENV:OrganizationHKCU\PowerShellBuilder"
+        $PSBuilderRoot = (Get-ItemProperty -Path "$RegPathPSBuilder" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
+
+        $ILMergePath = (Resolve-Path "$PSBuilderRoot\ILMerge").Path
         $ILMergeExePath = (Resolve-Path "$ILMergePath\ILMerge.exe").Path
         $Basename = (Get-Item "$ScriptPath").Basename
         $MergedExe = "$InputDir\{0}.exe" -f "Program"
@@ -620,7 +722,11 @@ function Invoke-ILMerge{
     }
 }
 
-
+$RegPathPSBuilder="$ENV:OrganizationHKCU\PowerShellBuilder"
+$PSBuilderRoot = (Get-ItemProperty -Path "$RegPathPSBuilder" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
+if([string]::IsNullOrEmpty($PSBuilderRoot)){
+    throw "Cannot find Registry Entry for this app. Did you run Setup ?"
+}
 
 $InstalledFrameworks = Get-Frameworks
 if($($InstalledFrameworks.Count) -eq 0){

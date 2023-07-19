@@ -6,3 +6,5 @@ obj
 obj/**
 bin
 bin/**
+tools/ConsoleBuilder.exe
+tools/GuiBuilder.exe
