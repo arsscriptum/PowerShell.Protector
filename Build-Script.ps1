@@ -109,6 +109,8 @@ function Build-Script{
         [Parameter(Position=0, Mandatory=$true)]
         [string]$ScriptPath,
         [Parameter(Mandatory=$false)]
+        [string]$OutputDir = "$PSScriptRoot\out",
+        [Parameter(Mandatory=$false)]
         [string]$IconPath,
         [Parameter(Mandatory=$false)]
         [switch]$GUI,
@@ -121,6 +123,8 @@ function Build-Script{
         [string]$Configuration='Release'
     ) 
 
+    $Null = Remove-Item -Path $OutputDir -Recurse -Force -ErrorAction Ignore
+    $Null = New-Item -Path $OutputDir -ItemType directory -Force -ErrorAction Ignore
 
     $DebugCfg = $Configuration -eq 'Debug'
     $ReleaseCfg = $Configuration -eq 'Release'
@@ -150,6 +154,7 @@ function Build-Script{
             $ExecutionLevel = 'requireAdministrator'
         }
     	
+        $Null = Remove-Item -Path $BinPath -Recurse -Force -ErrorAction Ignore
         $Null = Remove-Item -Path $RootPath -Recurse -Force -ErrorAction Ignore
     	$Null = New-Item -Path $RootPath -ItemType directory -Force -ErrorAction Ignore
         if(!(Test-Path "$BinPath")){
@@ -267,14 +272,13 @@ function Invoke-Confuser{
     ) 
 
     try {
-
-        $Null = Remove-Item -Path $OutputDir -Recurse -Force -ErrorAction Ignore
-        $Null = New-Item -Path $OutputDir -ItemType directory -Force -ErrorAction Ignore
-
+        #$BaseXmlCfgEncoded = "H4sIAAAAAAAACpVPyw3DIAy9I3UH5AHCvQo5dYCuQInT0AK2jJEyfqM0HaC39/R+eiMLvTCqpa7c9ZbEA9hHaHjCreTaPKyqfHUuUl16QxkizcgZtx0UmIy1o/SMloMqSvWg0hFsqitKUg9LyG3n7nByiG8Um2YPe5oFWyP5iYXms2j1cBd6SigDbniM/DXjvlWTGd15croY8wG7U6QT8QAAAA=="
         $BaseXmlCfgEncoded = "H4sIAAAAAAAACqXQOwrDMBAE0F6QO4g9gNUHyRBImSKkSS3ba6ygz7JagY8f47hME9LNwPCKscTlhaPo0oSaXAM7AD34ikdcU8zVwSJCZ2PGkudWkbuxTEgR1y0k6JXWlltETV4EOTsQbgg65AU5iIPZx7p1sy9TmY7t4uBeHy1n5AtRhyvu1k+a+XDf5Cd7IuRbGLopxj9oa46b+pNSb7gc24MzAQAA"
         #$BaseXmlCfgEncoded = "H4sIAAAAAAAACqWQsQrDMAxE90D/wegD4r3EgULHDqVLZsdWiFvHFrIM+fwGEjp1Kd3u0N07UEecn+hE5SpU5RrYAKjRFjzkusRUDMwidNba5TTVgty67JEirptYoD81SnVcIyqyIsjJgHBFUCHNyEEMTDaWzes9Sta9kFXwBrY+MZaS+XNdsj9Qs4F7edSUkC9ELa64b/22pnfgV/jAlgj5FsbWx/gfvdPHM/vmDY/7LdxXAQAA"
         [xml]$BaseXmlCfg =( (Convert-FromBase64CompressedScriptBlock -ScriptBlock $BaseXmlCfgEncoded) -as [xml] )
         $ConfuserExPath = "$PSScriptRoot\ConfuserEx"
+        $ILMergePath = "$PSScriptRoot\ILMerge"
+        $ILMergeExePath = "$ILMergePath\ILMerge.exe"
         $ConfigPath = "$PSScriptRoot\tmp"
         $ConfigFilePath = "$PSScriptRoot\tmp\confuser.crproj"
         $Null = Remove-Item -Path $ConfigPath -Recurse -Force -ErrorAction Ignore
@@ -372,5 +376,25 @@ function Invoke-Confuser{
 
 
 $BinPath = Build-Script -ScriptPath "$ScriptPath" -IconPath "$IconPath" -GUI:$GUI -Admin:$Admin -Configuration "$Configuration" -UseResourceEncryption:$UseResourceEncryption
+Start-Sleep 1
 
-Invoke-Confuser -InputDir "$BinPath" -OutputDir "$OutputDir" -ControlFlow -Constants -Resources -ReferencesProxy -AntiDebug -Compress
+if($false){
+    $TargetDef = ""
+    if($GUI){
+        $TargetDef = "/target:winexe"
+    }else{
+        $TargetDef = "/target:exe"
+    }
+    $ILMergePath = "$PSScriptRoot\ILMerge"
+    $ILMergeExePath = "$ILMergePath\ILMerge.exe"
+    $Basename = (Get-Item "$ScriptPath").Basename
+    $MergedExe = "$BinPath\{0}.exe" -f "Program"
+    $DllPath = (Get-ChildItem -Path $BinPath -File -Filter "*.dll").Fullname
+    $ExePath = (Get-ChildItem -Path $BinPath -File -Filter "*.exe").Fullname
+    Start-Process -FilePath $ILMergeExePath -ArgumentList @("$TargetDef","/out:$MergedExe" ,"$ExePath" ,"$DllPath") -NoNewWindow -Wait
+    $Null = Remove-Item -Path $DllPath -Force -ErrorAction Ignore
+    $Null = Remove-Item -Path $ExePath -Force -ErrorAction Ignore
+}
+
+
+Invoke-Confuser -InputDir "$BinPath" -OutputDir "$OutputDir" -ControlFlow -Constants -Resources -ReferencesProxy -AntiDebug
