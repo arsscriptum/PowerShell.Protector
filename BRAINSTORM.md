@@ -13,23 +13,23 @@ So I implemented my own builder.
 Protect your code and intellectual property.
 Convert PS1 script files into portable executables, convert PSM1 files into Windows .NET  libraries (\*.dll)
 
-1. Compile console/gui scripts versions
-2. Support resources inclusions / encryption
-3. Program password protection
-4. Provides assembly packer (compresses exe and uses stub to launch)
-5. Obfuscation: from 0 obfuscation (no changes) to aggressive mangling.
-6. Obfuscation: selection of 4 predifined presets of customized your protection
- - Advanced Anti-Debug and Anti-Tracer Protection
- - Advanced Overload Renaming
- - Anti-Reflection Protection
- - Anti-Decompiler Protection
- - Control Flow Obfuscation
- - Constant Value/Array Encryption
- - ILDASM Protection
- - String Encryption
- - Symbol Renaming
-7. Obfuscation: provided with my own customized version of ***NeoConfuserEx***
-8. Suports Cmdline and integration in explorer.
+- Compile console/gui scripts versions
+- Support resources inclusions / encryption
+- Program password protection
+- Provides assembly packer (compresses exe and uses stub to launch)
+- Obfuscation: provided with my own customized version of ***NeoConfuserEx***
+	- Obfuscation: selection of 4 predifined presets of customized your protection
+	- Obfuscation: from 0 obfuscation (no changes) to aggressive mangling.
+    - Advanced Anti-Debug and Anti-Tracer Protection
+    - Advanced Overload Renaming
+    - Anti-Reflection Protection
+    - Anti-Decompiler Protection
+    - Control Flow Obfuscation
+    - Constant Value/Array Encryption
+    - ILDASM Protection
+    - String Encryption
+    - Symbol Renaming
+- Suports Cmdline and integration in explorer.
 
 ## ScreenShots
 
