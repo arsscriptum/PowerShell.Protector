@@ -4,20 +4,22 @@
 #̷𝓍   🇵​​​​​🇴​​​​​🇼​​​​​🇪​​​​​🇷​​​​​🇸​​​​​🇭​​​​​🇪​​​​​🇱​​​​​🇱​​​​​ 🇸​​​​​🇨​​​​​🇷​​​​​🇮​​​​​🇵​​​​​🇹​​​​​ 🇧​​​​​🇾​​​​​ 🇬​​​​​🇺​​​​​🇮​​​​​🇱​​​​​🇱​​​​​🇦​​​​​🇺​​​​​🇲​​​​​🇪​​​​​🇵​​​​​🇱​​​​​🇦​​​​​🇳​​​​​🇹​​​​​🇪​​​​​.🇶​​​​​🇨​​​​​@🇬​​​​​🇲​​​​​🇦​​​​​🇮​​​​​🇱​​​​​.🇨​​​​​🇴​​​​​🇲​​​​​
 #>
 
-$CurrentPath = (Get-Location).Path
-$CmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId = '$pid'" | select CommandLine ).CommandLine   
-[string[]]$UserCommandArray = $CmdLine.Split(' ')
-$ProgramFullPath = $UserCommandArray[0].Replace('"','')
-$ProgramDirectory = (gi $ProgramFullPath).DirectoryName
-$ProgramName = (gi $ProgramFullPath).Name
-$ProgramBasename = (gi $ProgramFullPath).BaseName
 
+ $CmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId = '$pid'" | select CommandLine ).CommandLine   
 if(($CmdLine -match 'pwsh.exe') -Or ($CmdLine -match 'powershell.exe')){
     $MODE_NATIVE = $False
     $MODE_SCRIPT = $True
 }else{
     $MODE_NATIVE = $True
     $MODE_SCRIPT = $False
+
+    $CurrentPath = (Get-Location).Path
+   
+    [string[]]$UserCommandArray = $CmdLine.Split(' ')
+    $ProgramFullPath = $UserCommandArray[0].Replace('"','')
+    $ProgramDirectory = (gi "$ProgramFullPath").DirectoryName
+    $ProgramName = (gi "$ProgramFullPath").Name
+    $ProgramBasename = (gi "$ProgramFullPath").BaseName
 }
 
 $QuickLaunch = $False
@@ -49,6 +51,7 @@ function Usage(){
     Write-Output "           -i  :  input"
     Write-Output "           -o  :  output"
     Write-Output "           -n  :  icon"
+    Write-Output "           -r  :  resource clear"
     Write-Output "           -x  :  obfuscation level selection <'none','minimum','normal','aggressive','maximum'>"
 }
 
@@ -107,6 +110,9 @@ if($ArgsCount -eq 0){
         elseif($name -eq 'g'){
             $GUI = $True
         }
+        elseif($name -eq 'r'){
+            $UseResourceEncryption = $False
+        }
         elseif($name -eq 'n'){
             $i++
             $value = $args[$i]
@@ -145,8 +151,8 @@ if(-not (Test-Path "$ScriptPath") ){
     return
 }
 
-$RegPathConsoleBuilderRoot="$ENV:OrganizationHKCU\ConsoleBuilder"
-$ConsoleBuilderRoot = (Get-ItemProperty -Path "$RegPathConsoleBuilderRoot" -Name "ConsoleBuilderRoot").ConsoleBuilderRoot
+$RegPathConsoleBuilderRoot="$ENV:OrganizationHKCU\PowerShellBuilder"
+$ConsoleBuilderRoot = (Get-ItemProperty -Path "$RegPathConsoleBuilderRoot" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
 
 
 
@@ -375,7 +381,6 @@ $BaseDll_GUI = "H4sIAAAAAAAACu1923YbOZLgs/qc/oe0ds8UWaZpSb6WbVUtRVE2j3VbkrK7VuXh
 $Program = "H4sIAAAAAAAACu1XbW/bNhD+HiD/gfOXSKinImmBDQjyIbNdx0hSG5bbdG0Kg5YuNlGK1Egqtjv0v+8oS5b1YifLvmzA5BiOjnfPPfdCHZVoJubEX2sD0fnxUbJz63Uk5xAYJoX2+iBAsaCqcsPEH1XZBFamJlsooCEKvAnV3/R2+VaGCYf3NAI/pgEUchYoqeWD8e6YeHNWhRsnwrAIvIEwoGTsg3pkAeiqGtqGcqlztXp8USwFCIMsgFdXu9TQmkzRJd6i2H4E0taWNhlpZIQJuozj46M/j48IXgGnWpORknNFo40oW7HXly7nA3SvjNP6oEG9OfNCzlvu10JFG2pYQDCboATBGEZGkT6YbsfJbhZLEbopmRfDMmHIGDhQDWXcdu4xDPa7mIfsWR4sa7Al6tBYb72EQTtdFQMRwqrsJcN4lCxEfhpMB7tQcrgToQ/GYBG04xbqO5ndWCtbNRrHI2oW5CKv32DoWQF2s+kyhb0t1do2n5P3FTxkHe9dag3RjK+tbm8FQWJ95kLH9W5kgAylsLQbXOMPWr1jHMoMXuCh2YGCeU8YtUbosi90EXNsSufk/v6kTU6mJ+5eBIb/rn/D2mckW1mWW4ctKtr39y3yakuoYjrObK5hTb7h92Ir8TqJUrj7bJ96wxiEn8xQy6nyahOjEnAP4OrUEKHRQQUppdSMwB6Ik1n+dEFEwvlOQzU0lb1evyaki9vFgCbU+rUhURHid02CBeNhJtSYjyBRmj0CVpiYBZAzq6bmSYQxE6aJkYTNhVRAQCmpNJGCREynzxuLUPduw9t43wQ4UQA7QT5QrmtR/ihuf+zbYFcshGJ//b+v/q37qmycPUZjxSKa8t2dDd5nnHi1jsfG6/b868lw9LE3nox7Plqdnv6yX+1qOP6cq/3aoEYDk1A+Yivg+lNGoXjQZ9TaFTT3CaDfnwTK2NefCeVBliahnWeoPGByx7FMiZcD+Zm8PW9UtdTKVOuqWVEXsPpIeQIW3TrxJtJPV5zWp7ct97CR9WPd1Y0azZbpQcdn3+EKVmhawLwqeDREVNh1IcAkcbRFOQ5JpcEpobbzCdbnckY5+57OJu99Es1A+WbNQXuotrmvE83SfFohkaW0Kv57uftHSRtJ/ZKcodn+lG0wX5Cx/+DovHju6Cx56uDrQD7FnvC1M8AKGA8PgWmFnNbdtktb7Vpx2ttgU+1rXPa6d1Klx+ZnwCISs1XbQu/slYPYz5i6A4HQti8AXxsODN2ZlBzPC/2E9QSdcQgxh9PpaDzsjy9vp/0Pg+m7m8v+dFqJqLiqtXN2wdyGUlXPA9WK4IMPGsz2ntPPD1a0kqrmZN1SJpzNxv3y1R6j9P6EVRKL3svrFgtXCB7ijP3FDoZlLq2xLd9lNp5vKL4ApTx29LPI8Af/jv4CEXR6fFwPAAA="
 $WinManifest = "H4sIAAAAAAAACo2QT2vDMAzF74V9B6N7mnW7jFKvlM5jhbCW0ZbdjOconcF/mOWE5tvPCaz0sEMvQhK833vSYnl2lnUYyQTPYTa9B4Zeh9r4E4fD/rV4AkZJ+VrZ4JFDjwTL57vJQhGh+7I9ywBPHNro56S/0SkqnNExUGhSoYObK3LTbgbMKW8apHS8dhtQKbaUNr4JN7IeRhWhbqNJ/dBH/GkzGetdNJ2xeEK6kfU4si56cc7UlNNV2KFldqgcpNxVq7V421Yv4kOKT7E+7Dfbd1mJo6ikBNaaldZI2a5RlhDKAVr+k2rcXycvL8eP099X8zD5BcQ7/AecAQAA"
 
-
 function Build-Script{
     [CmdletBinding(SupportsShouldProcess)]
     param(
@@ -399,9 +404,6 @@ function Build-Script{
     $RegPathPSBuilder="$ENV:OrganizationHKCU\PowerShellBuilder"
     $PSBuilderRoot = (Get-ItemProperty -Path "$RegPathPSBuilder" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
 
-    $Null = Remove-Item -Path $OutputDir -Recurse -Force -ErrorAction Ignore
-    $Null = New-Item -Path $OutputDir -ItemType directory -Force -ErrorAction Ignore
-
     $DebugCfg = $Configuration -eq 'Debug'
     $ReleaseCfg = $Configuration -eq 'Release' 
     $RootPath = $PSBuilderRoot
@@ -420,6 +422,9 @@ function Build-Script{
         $DbgLevel = "/debug:full"
         $BinPath = "$BinPath\Debug"
     }
+    if(-not (Test-Path "$BinPath") ){
+        $Null = New-Item -Path $BinPath -ItemType directory -Force -ErrorAction Ignore
+    }
     $DllBin = "$BinPath\PsWrapperLib.dll"
     $AppBin = "$BinPath\PsRunnerApp.exe"
     $DllSource = "$ObjPath\PsWrapperLib.cs"
@@ -435,24 +440,38 @@ function Build-Script{
         if($Admin){
             $ExecutionLevel = 'requireAdministrator'
         }
-        
-        $Null = Remove-Item -Path $BinPath -Recurse -Force -ErrorAction Ignore
-        $Null = Remove-Item -Path $RootPath -Recurse -Force -ErrorAction Ignore
-        $Null = New-Item -Path $RootPath -ItemType directory -Force -ErrorAction Ignore
-        if(!(Test-Path "$BinPath")){
-            $Null = New-Item -Path $BinPath -ItemType directory -Force -ErrorAction Ignore
-        }
-
+  
+     
         $CscExe = Get-CscExe
         if([string]::IsNullOrEmpty($CscExe) -eq $True){
             throw "Microsoft (R) Visual C# Compiler NOT FOUND!`nThis compiler is provided as part of the Microsoft (R) .NET Framework."
         }
-        Convert-FromBase64CompressedScriptBlock -ScriptBlock $Program | Set-Content $AppSource
-        Convert-FromBase64CompressedScriptBlock -ScriptBlock $WinManifest | Set-Content $ManifestSource
+        $sdata = Convert-FromBase64CompressedScriptBlock -ScriptBlock $Program
+        $stream  = [System.IO.StreamWriter]::new($AppSource, $false)  # $true for Append
+        $stream.Write($sdata)
+        $stream.Flush()
+        $stream.Close()
+        #Set-Content -Path "$AppSource" -Value "$sdata"
+        $sdata = Convert-FromBase64CompressedScriptBlock -ScriptBlock $WinManifest
+        $stream  = [System.IO.StreamWriter]::new($ManifestSource, $false)
+        #Set-Content -Path "$ManifestSource" -Value "$sdata"
+        $stream.Write($sdata)
+        $stream.Flush()
+        $stream.Close()
         if($GUI){
-            Convert-FromBase64CompressedScriptBlock -ScriptBlock $BaseDll_GUI | Set-Content $DllSource
+            $sdata = Convert-FromBase64CompressedScriptBlock -ScriptBlock $BaseDll_GUI
+            #Set-Content -Path "$DllSource" -Value "$sdata"
+            $stream  = [System.IO.StreamWriter]::new($DllSource, $false)
+            $stream.Write($sdata)
+            $stream.Flush()
+            $stream.Close()
         }else{
-            Convert-FromBase64CompressedScriptBlock -ScriptBlock $BaseDll_Console | Set-Content $DllSource
+            $sdata = Convert-FromBase64CompressedScriptBlock -ScriptBlock $BaseDll_Console
+            #Set-Content -Path "$DllSource" -Value "$sdata"
+            $stream  = [System.IO.StreamWriter]::new($DllSource, $false)
+            $stream.Write($sdata)
+            $stream.Flush()
+            $stream.Close()
         }
 
         $EncryptedScriptResourceDef = ""
@@ -476,10 +495,12 @@ function Build-Script{
             $ProgramCode = Get-Content -Path "$AppSource" -Raw -Encoding UTF8
             $ProgramCode = $ProgramCode.Replace('__PROGRAM_GUI_FLAG__', 'true')
             Set-Content -Path "$AppSource" -Value "$ProgramCode" -Encoding UTF8 -ErrorAction Stop
+           
         }else{
             $ProgramCode = Get-Content -Path "$AppSource" -Raw -Encoding UTF8
             $ProgramCode = $ProgramCode.Replace('__PROGRAM_GUI_FLAG__', 'false')
             Set-Content -Path "$AppSource" -Value "$ProgramCode" -Encoding UTF8 -ErrorAction Stop
+            
         }
         
         $IconDef = ""
@@ -490,12 +511,12 @@ function Build-Script{
         $ManifestCode = Get-Content "$ManifestSource" -Raw -Encoding UTF8
         $ManifestCode = $ManifestCode.Replace('__PLACEHOLDER_EXECUTION_LEVEL__', $ExecutionLevel)
         Set-Content -Path "$ManifestSource" -Value "$ManifestCode" -Encoding UTF8 -ErrorAction Stop
-
-
+        
+    
         &"$CscExe" "/nologo" "/warn:0" "/target:library" "/reference:$AutomationRef" "$EncryptedScriptResourceDef" "$DbgLevel" "/out:$DllBin" "$DllSource"   
 
         &"$CscExe" "/nologo" "/warn:0" "/target:exe" "/reference:$DllBin" "/reference:$PresentationFrameworkRef" "/win32manifest:$ManifestSource" "$IconDef" "$DbgLevel" "/out:$AppBin" "$AppSource"   
-    
+       
         $Null = Remove-Item -Path $ObjPath -Recurse -Force -ErrorAction Ignore
 
         if(( Test-Path "$AppBin") -And ( Test-Path "$DllBin") ){
@@ -788,6 +809,9 @@ Write-Output "#######################################"
 Write-Output "              ILMerge                  "
 Write-Output "#######################################"
 Write-Output "`n`n"
+Write-Output "BinPath     `"$BinPath`""
+Write-Output "OutputDir      `"$OutputDir`""
+Write-Output "GUI            `"$GUI`""
 Write-Output "Using Framework version $($LatestFramework.Name)"
 Write-Output "Framework Path =>     `"$($LatestFramework.Path)`""
 Invoke-ILMerge -InputDir "$BinPath" -OutputDir "$OutputDir" -GUI:$GUI
@@ -800,3 +824,9 @@ Write-Output "#######################################"
 Write-Output "             Confuser                  "
 Write-Output "#######################################"
 Invoke-Confuser -InputDir "$BinPath" -OutputDir "$OutputDir"  -Preset "$ObfuscationSelection"
+
+
+$BaseName = (Get-Item "$ScriptPath").Basename
+$OutProgram = "$OutputDir\Program.exe"
+$OutFinaleProgram = "$OutputDir\{0}.exe" -f $Basename
+Move-Item $OutProgram $OutFinaleProgram -Force
