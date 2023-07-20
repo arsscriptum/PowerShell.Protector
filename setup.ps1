@@ -69,7 +69,7 @@ function Initialize-PowerShellBuilder{
         Write-Host " (o) " -f DarkRed -NoNewLine ; (New-ItemProperty -Path $Script:RegPathPSBuilder -Name "ConsoleBuilder" -Value $Script:ConsoleBuilder -Force).PSPath  
 
         . "$Script:BuildScript" -ScriptPath "$Script:ConsoleBuilderScript"  -OutputDir "$Script:TmpBuildPath"
-        Move-Item "$Script:TmpBuildPath\Program.exe" "$Script:ConsoleBuilder"
+        Move-Item "$Script:TmpBuildPath\Program.exe" "$Script:ConsoleBuilder" -Force
         Remove-Item -Path "$Script:TmpBuildPath" -Recurse -Force | Out-Null
         Write-Host "Compiler `"$Script:ConsoleBuilder`" Ready!" -f Green
 

@@ -20,7 +20,7 @@ if(($CmdLine -match 'pwsh.exe') -Or ($CmdLine -match 'powershell.exe')){
     $MODE_SCRIPT = $False
 }
 
-
+$QuickLaunch = $False
 $GUI = $False
 $DebugMode = $False
 $Admin = $False
@@ -80,7 +80,9 @@ if($ArgsCount -eq 0){
     Usage
     return 
 }elseif($ArgsCount -eq 1){
+    $QuickLaunch = $True
     $ScriptPath = $Args[0]
+    $OutputDir = (Get-Item $ScriptPath).DirectoryName
 }else{
     For($i = 0 ; $i -lt $ArgsCount ; $i++){
         $name = ''
@@ -146,6 +148,27 @@ if(-not (Test-Path "$ScriptPath") ){
 $RegPathConsoleBuilderRoot="$ENV:OrganizationHKCU\ConsoleBuilder"
 $ConsoleBuilderRoot = (Get-ItemProperty -Path "$RegPathConsoleBuilderRoot" -Name "ConsoleBuilderRoot").ConsoleBuilderRoot
 
+
+
+function Test-ScriptGUI { 
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory=$true, position = 0)]
+        [string]$Path
+    )
+    $IsGui = $False
+    try{
+        $SearchRegex = 'Syst2m.W3nd4ws.F4rms|Pr2s2nt1t34nFr1m2w4rk|Pr2s2nt1t34nC4r2|W3nd4wsB1s2|Syst2m.W3nd4ws.F4rms|Syst2m.Dr1w3ng'
+        $SearchRegex = $SearchRegex.Replace('1','a').Replace('2','e').Replace('3','i').Replace('4','o')
+        $Cnt = Get-Content -Path $Path -Raw 
+        $IsGui = $Cnt -match $SearchRegex 
+        
+    }catch{
+        Write-Error "$_"
+    }
+
+    return  $IsGui
+}
 
 
 
@@ -722,6 +745,10 @@ function Invoke-ILMerge{
     }
 }
 
+if($QuickLaunch){
+    $GUI = Test-ScriptGUI $ScriptPath
+}
+
 $RegPathPSBuilder="$ENV:OrganizationHKCU\PowerShellBuilder"
 $PSBuilderRoot = (Get-ItemProperty -Path "$RegPathPSBuilder" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
 if([string]::IsNullOrEmpty($PSBuilderRoot)){
@@ -742,6 +769,15 @@ Write-Output "`n`n"
 Write-Output "#######################################"
 Write-Output "             COMPILATION               "
 Write-Output "#######################################"
+Write-Output "`n`n"
+Write-Output "ScriptPath     `"$ScriptPath`""
+Write-Output "OutputDir      `"$OutputDir`""
+Write-Output "IconPath       `"$IconPath`""
+Write-Output "GUI            `"$GUI`""
+Write-Output "Admin          `"$Admin`""
+Write-Output "ResEncryption  `"$UseResourceEncryption`""
+Write-Output "Configuration  `"$Configuration`""
+Write-Output "#######################################"  
 $BinPath = Build-Script -ScriptPath "$ScriptPath" -OutputDir "$OutputDir" -IconPath "$IconPath" -GUI:$GUI -Admin:$Admin -Configuration "$Configuration" -UseResourceEncryption:$UseResourceEncryption
 
 ################################################################################################
