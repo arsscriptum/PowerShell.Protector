@@ -800,7 +800,7 @@ Write-Output "ResEncryption  `"$UseResourceEncryption`""
 Write-Output "Configuration  `"$Configuration`""
 Write-Output "#######################################"  
 $BinPath = Build-Script -ScriptPath "$ScriptPath" -OutputDir "$OutputDir" -IconPath "$IconPath" -GUI:$GUI -Admin:$Admin -Configuration "$Configuration" -UseResourceEncryption:$UseResourceEncryption
-
+Read-Host " d"
 ################################################################################################
 # ILMERGE => MERGE DLL and EXE in EXE
 ################################################################################################
