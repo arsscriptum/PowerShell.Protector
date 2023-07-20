@@ -86,6 +86,9 @@ if($ArgsCount -eq 0){
     $QuickLaunch = $True
     $ScriptPath = $Args[0]
     $OutputDir = (Get-Item $ScriptPath).DirectoryName
+    $RegPathPSBuilder="$ENV:OrganizationHKCU\PowerShellBuilder"
+    $PSBuilderRoot = (Get-ItemProperty -Path "$RegPathPSBuilder" -Name "PowerShellBuilderRoot").PowerShellBuilderRoot
+    $IconPath = "$PSBuilderRoot\tools\ico\Generate.ico"
 }else{
     For($i = 0 ; $i -lt $ArgsCount ; $i++){
         $name = ''
@@ -800,7 +803,7 @@ Write-Output "ResEncryption  `"$UseResourceEncryption`""
 Write-Output "Configuration  `"$Configuration`""
 Write-Output "#######################################"  
 $BinPath = Build-Script -ScriptPath "$ScriptPath" -OutputDir "$OutputDir" -IconPath "$IconPath" -GUI:$GUI -Admin:$Admin -Configuration "$Configuration" -UseResourceEncryption:$UseResourceEncryption
-Read-Host " d"
+
 ################################################################################################
 # ILMERGE => MERGE DLL and EXE in EXE
 ################################################################################################
